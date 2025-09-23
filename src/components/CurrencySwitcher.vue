@@ -78,10 +78,10 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useCurrenciesStore } from '../stores/modules/currencies.js'
+import { useCurrenciesStore } from '@/stores/modules/currencies'
 
 const currenciesStore = useCurrenciesStore()
 const { selectedCurrency, secondaryCurrencies, selectedCurrencyInfo } = storeToRefs(currenciesStore)
@@ -98,23 +98,24 @@ const closeDropdown = () => {
   isOpen.value = false
 }
 
-const selectCurrency = (currencyCode) => {
+const selectCurrency = (currencyCode: string): void => {
   currenciesStore.changeCurrency(currencyCode)
   closeDropdown()
 }
 
-const handleImageError = (event) => {
-  console.warn('Currency flag image failed to load:', event.target.src)
-  event.target.style.display = 'none'
-  const fallback = event.target.nextElementSibling
+const handleImageError = (event: Event): void => {
+  const target = event.target as HTMLImageElement
+  console.warn('Currency flag image failed to load:', target.src)
+  target.style.display = 'none'
+  const fallback = target.nextElementSibling as HTMLElement
   if (fallback && fallback.classList.contains('currency-flag-fallback')) {
     fallback.style.display = 'flex'
   }
 }
 
-const handleClickOutside = (event) => {
+const handleClickOutside = (event: Event): void => {
   const switcher = document.querySelector('.currency-switcher')
-  if (switcher && !switcher.contains(event.target)) {
+  if (switcher && !switcher.contains(event.target as Node)) {
     closeDropdown()
   }
 }

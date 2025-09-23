@@ -1,8 +1,13 @@
+import type { Maybe } from "@/types";
+
 export function useFormatters() {
-  const formatPrice = (price, decimals = 2) => {
+  const formatPrice = (
+    price: Maybe<string | number>,
+    decimals: number = 2
+  ): string => {
     if (price === null || price === undefined || price === "") return "0.00";
 
-    const numPrice = parseFloat(price);
+    const numPrice = parseFloat(String(price));
     if (isNaN(numPrice)) return "0.00";
 
     return numPrice.toLocaleString("en-AU", {
@@ -11,10 +16,10 @@ export function useFormatters() {
     });
   };
 
-  const formatVolume = (volume) => {
+  const formatVolume = (volume: Maybe<string | number>): string => {
     if (volume === null || volume === undefined || volume === "") return "0";
 
-    const num = parseFloat(volume);
+    const num = parseFloat(String(volume));
     if (isNaN(num)) return "0";
 
     if (num >= 1000000) {
@@ -25,23 +30,29 @@ export function useFormatters() {
     return num.toFixed(2);
   };
 
-  const getDecimalPlaces = (price) => {
+  const getDecimalPlaces = (price: number): number => {
     if (price > 1000) return 2;
     if (price > 1) return 4;
     if (price > 0.01) return 5;
     return 8;
   };
 
-  const formatPercentage = (percent, direction) => {
+  const formatPercentage = (
+    percent: string,
+    direction: "Up" | "Down"
+  ): string => {
     const sign = direction === "Up" ? "+" : "-";
     return `${sign}${percent}%`;
   };
 
-  const getConsistentTimezone = () => {
+  const getConsistentTimezone = (): string => {
     return Intl.DateTimeFormat().resolvedOptions().timeZone;
   };
 
-  const formatTime = (timestamp, includeDate = false) => {
+  const formatTime = (
+    timestamp: number,
+    includeDate: boolean = false
+  ): string => {
     const date = new Date(timestamp * 1000);
     const timezone = getConsistentTimezone();
 
@@ -64,11 +75,11 @@ export function useFormatters() {
     });
   };
 
-  const formatChartTime = (timestamp) => {
+  const formatChartTime = (timestamp: number): string => {
     return formatTime(timestamp, false);
   };
 
-  const formatCurrencyPair = (primary, secondary) => {
+  const formatCurrencyPair = (primary: string, secondary: string): string => {
     return `${primary.toUpperCase()}/${secondary.toUpperCase()}`;
   };
 

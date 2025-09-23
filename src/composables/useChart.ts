@@ -1,26 +1,30 @@
-import { ref } from "vue";
-import { createChart, ColorType, AreaSeries } from "lightweight-charts";
+import { ref, type Ref } from "vue";
+import {
+  createChart,
+  ColorType,
+  AreaSeries,
+  type IChartApi,
+  type ISeriesApi,
+} from "lightweight-charts";
 import {
   CHART_COLORS,
   CHART_DIMENSIONS,
   CHART_TIME_CONFIG,
-} from "../constants/chart.js";
-import { useFormatters } from "./useFormatters.js";
+} from "@/constants/chart";
+import { useFormatters } from "@/composables/useFormatters";
+import type { ChartData, CrosshairParam, ChartDataConfig } from "@/types";
 
 export function useChart() {
-  const {
-    formatTime,
-    formatChartTime,
-    getDecimalPlaces,
-    getConsistentTimezone,
-  } = useFormatters();
+  const { formatTime, formatChartTime, getDecimalPlaces } = useFormatters();
 
-  const showTooltip = ref(false);
-  const tooltipX = ref(0);
-  const tooltipY = ref(0);
-  const tooltipData = ref(null);
+  const showTooltip: Ref<boolean> = ref(false);
+  const tooltipX: Ref<number> = ref(0);
+  const tooltipY: Ref<number> = ref(0);
+  const tooltipData: Ref<{ price: string; time: string } | null> = ref(null);
 
-  const convertDataToLightweightFormat = (chartData) => {
+  const convertDataToLightweightFormat = (
+    chartData: ChartDataConfig
+  ): { priceData: ChartData[] } => {
     if (!chartData?.datasets?.[0]?.data) {
       return { priceData: [] };
     }
@@ -28,23 +32,25 @@ export function useChart() {
     const prices = chartData.datasets[0].data;
     const now = Math.floor(Date.now() / 1000);
 
-    const priceData = prices.map((price, index) => {
+    const priceData = prices.map((price: number, index: number) => {
       const timeOffset =
         (prices.length - 1 - index) * CHART_TIME_CONFIG.TIME_STEP;
       const timestamp = now - timeOffset;
 
       return {
         time: timestamp,
-        value: parseFloat(price),
+        value: typeof price === "number" ? price : parseFloat(String(price)),
       };
     });
 
-    priceData.sort((a, b) => a.time - b.time);
+    priceData.sort((a: ChartData, b: ChartData) => a.time - b.time);
 
     return { priceData };
   };
 
-  const getChartOptions = (customOptions = {}) => {
+  const getChartOptions = (
+    customOptions: Record<string, unknown> = {}
+  ): Record<string, unknown> => {
     return {
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
@@ -112,7 +118,7 @@ export function useChart() {
         rightOffset: CHART_DIMENSIONS.SPACING.RIGHT_OFFSET,
         barSpacing: CHART_DIMENSIONS.SPACING.BAR,
         minBarSpacing: CHART_DIMENSIONS.SPACING.MIN_BAR,
-        tickMarkFormatter: (time) => {
+        tickMarkFormatter: (time: number) => {
           return formatChartTime(time);
         },
       },
@@ -131,7 +137,7 @@ export function useChart() {
     };
   };
 
-  const getAreaSeriesOptions = () => {
+  const getAreaSeriesOptions = (): Record<string, unknown> => {
     return {
       lineColor: CHART_COLORS.PRIMARY.lineColor,
       topColor: CHART_COLORS.PRIMARY.topColor,
@@ -154,12 +160,12 @@ export function useChart() {
   };
 
   const createCrosshairMoveHandler = (
-    chart,
-    areaSeries,
-    chartContainer,
-    chartElement
+    _chart: IChartApi,
+    areaSeries: ISeriesApi<"Area">,
+    chartContainer: HTMLElement,
+    chartElement: HTMLElement
   ) => {
-    return (param) => {
+    return (param: CrosshairParam) => {
       if (!param.point || !param.time || !chartContainer) {
         showTooltip.value = false;
         return;
@@ -172,7 +178,8 @@ export function useChart() {
         return;
       }
 
-      const chartRect = chartElement.getBoundingClientRect();
+      const chartRect = chartElement?.getBoundingClientRect();
+      if (!chartRect) return;
 
       const x = param.point.x;
       const y = param.point.y;
@@ -180,10 +187,10 @@ export function useChart() {
       tooltipX.value = Math.min(x + 15, chartRect.width - 150);
       tooltipY.value = Math.max(y - 15, 10);
 
-      const decimals = getDecimalPlaces(priceData.value);
+      const decimals = getDecimalPlaces((priceData as { value: number }).value);
 
       tooltipData.value = {
-        price: priceData.value.toFixed(decimals),
+        price: (priceData as { value: number }).value.toFixed(decimals),
         time: formatTime(param.time, false),
       };
 
@@ -191,17 +198,19 @@ export function useChart() {
     };
   };
 
-  /**
-   * Create resize observer for chart
-   * @param {Object} chart - Chart instance
-   * @param {Object} element - Element to observe
-   * @returns {ResizeObserver} Resize observer instance
-   */
-  const createResizeObserver = (chart, element) => {
+  const createResizeObserver = (
+    chart: IChartApi,
+    element: HTMLElement
+  ): ResizeObserver => {
     const resizeObserver = new ResizeObserver((entries) => {
       if (chart && entries.length > 0) {
-        const { width, height } = entries[0].contentRect;
-        chart.applyOptions({ width, height });
+        const contentRect = entries[0]?.contentRect;
+        if (contentRect) {
+          chart.applyOptions({
+            width: contentRect.width,
+            height: contentRect.height,
+          });
+        }
       }
     });
 
@@ -209,14 +218,11 @@ export function useChart() {
     return resizeObserver;
   };
 
-  /**
-   * Initialize chart with data
-   * @param {HTMLElement} chartElement - Chart container element
-   * @param {Object} data - Chart data
-   * @param {Object} [options={}] - Chart options
-   * @returns {Object} Chart and series instances
-   */
-  const initializeChart = (chartElement, data, options = {}) => {
+  const initializeChart = (
+    chartElement: HTMLElement,
+    data: ChartDataConfig,
+    options: Record<string, unknown> = {}
+  ): { chart: IChartApi; areaSeries: ISeriesApi<"Area"> } => {
     if (!chartElement || !data) {
       throw new Error("Chart element and data are required");
     }
@@ -227,7 +233,9 @@ export function useChart() {
 
       const { priceData } = convertDataToLightweightFormat(data);
       if (priceData.length > 0) {
-        areaSeries.setData(priceData);
+        areaSeries.setData(
+          priceData as unknown as Parameters<typeof areaSeries.setData>[0]
+        );
         chart.timeScale().fitContent();
       }
 

@@ -69,8 +69,8 @@
                 <div class="currency-icon-wrapper">
                   <img 
                     v-if="getCurrencyInfo(item.pair.primary)?.icon" 
-                    :src="`data:image/svg+xml;base64,${getCurrencyInfo(item.pair.primary).icon}`"
-                    :alt="getCurrencyInfo(item.pair.primary).ticker"
+                    :src="`data:image/svg+xml;base64,${getCurrencyInfo(item.pair.primary)?.icon}`"
+                    :alt="getCurrencyInfo(item.pair.primary)?.ticker"
                     class="currency-icon"
                   />
                   <div 
@@ -140,18 +140,19 @@
 
     <div v-if="error" class="error-state">
       <p>{{ error }}</p>
-      <button @click="cryptoStore.fetchMarketData" class="btn btn-primary">Retry</button>
+      <button @click="() => cryptoStore.fetchMarketData()" class="btn btn-primary">Retry</button>
     </div>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import { useCryptoStore } from '../stores/crypto'
-import { CURRENCIES_DATA } from '../constants/currencies'
-import TableSkeleton from '../components/TableSkeleton.vue'
+import { useCryptoStore } from '@/stores/crypto'
+import { CURRENCIES_DATA } from '@/constants/currencies'
+import TableSkeleton from '@/components/TableSkeleton.vue'
+import type { CurrencyInfo, MarketDataItem, Optional, Maybe } from '@/types'
 
 const router = useRouter()
 const cryptoStore = useCryptoStore()
@@ -167,11 +168,11 @@ const {
   selectedCurrency
 } = storeToRefs(cryptoStore)
 
-const getCurrencyInfo = (code) => cryptoStore.getCurrencyInfo(code)
-const formatPrice = (price, decimals) => cryptoStore.formatPrice(price, decimals)
-const formatVolume = (volume) => cryptoStore.formatVolume(volume)
+const getCurrencyInfo = (code: string): Optional<CurrencyInfo> => cryptoStore.getCurrencyInfo(code)
+const formatPrice = (price: Maybe<string | number>, decimals: number = 2): string => cryptoStore.formatPrice(price, decimals)
+const formatVolume = (volume: Maybe<string | number>): string => cryptoStore.formatVolume(volume)
 
-const selectedCurrencyInfo = computed(() => 
+const selectedCurrencyInfo = computed((): Optional<CurrencyInfo> => 
   CURRENCIES_DATA.find(currency => currency.code === selectedCurrency.value)
 )
 
@@ -182,27 +183,16 @@ const availableCurrencies = computed(() => {
   )
 })
 
-const changeCurrency = (currencyCode) => {
+const changeCurrency = (currencyCode: string): void => {
   cryptoStore.changeCurrency(currencyCode)
 }
 
-const setSortBy = (field) => {
-  if (sortBy.value === field) {
-    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    sortBy.value = field
-    if (field === 'price' || field === 'volume') {
-      sortOrder.value = 'desc'
-    } else if (field === 'change') {
-      sortOrder.value = 'desc'
-    } else {
-      sortOrder.value = 'asc'
-    }
-  }
+const setSortBy = (field: string): void => {
+  cryptoStore.setSortBy(field as "name" | "price" | "change" | "volume");
 }
 
 
-const goToDetail = (item) => {
+const goToDetail = (item: MarketDataItem): void => {
   router.push(`/crypto/${item.pair.primary.toLowerCase()}`)
 }
 
@@ -290,8 +280,6 @@ onUnmounted(() => {
   border-color: var(--yellow);
 }
 
-
-/* Sortable table headers */
 .market-table th.sortable {
   cursor: pointer;
   user-select: none;

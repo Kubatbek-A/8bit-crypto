@@ -1,10 +1,20 @@
-import { ref, computed } from "vue";
+import { ref, computed, type Ref, type ComputedRef } from "vue";
 import { defineStore } from "pinia";
-import { API_ENDPOINTS } from "../../constants/api.js";
-import { useApi } from "../../composables/useApi.js";
-import { usePolling } from "../../composables/usePolling.js";
-import { useFormatters } from "../../composables/useFormatters.js";
-import { useCurrenciesStore } from "./currencies.js";
+import { API_ENDPOINTS } from "@/constants/api";
+import { useApi } from "@/composables/useApi";
+import { usePolling } from "@/composables/usePolling";
+import { useFormatters } from "@/composables/useFormatters";
+import { useCurrenciesStore } from "@/stores/modules/currencies";
+import type {
+  MarketDataItem,
+  ApiError,
+  MarketStats,
+  SortField,
+  SortOrder,
+  Optional,
+  Maybe,
+  Nullable,
+} from "@/types";
 
 export const useMarketStore = defineStore("market", () => {
   const { fetchData } = useApi();
@@ -12,17 +22,17 @@ export const useMarketStore = defineStore("market", () => {
   const { formatPrice, formatVolume } = useFormatters();
   const currenciesStore = useCurrenciesStore();
 
-  const marketData = ref([]);
-  const isLoading = ref(false);
-  const isInitialLoad = ref(true);
-  const error = ref(null);
-  const lastUpdate = ref(null);
-  const searchQuery = ref("");
-  const selectedType = ref("all");
-  const sortBy = ref("name");
-  const sortOrder = ref("asc");
+  const marketData: Ref<MarketDataItem[]> = ref([]);
+  const isLoading: Ref<boolean> = ref(false);
+  const isInitialLoad: Ref<boolean> = ref(true);
+  const error: Ref<Nullable<ApiError>> = ref(null);
+  const lastUpdate: Ref<Nullable<Date>> = ref(null);
+  const searchQuery: Ref<string> = ref("");
+  const selectedType: Ref<string> = ref("all");
+  const sortBy: Ref<SortField> = ref("name");
+  const sortOrder: Ref<SortOrder> = ref("asc");
 
-  const filteredMarketData = computed(() => {
+  const filteredMarketData: ComputedRef<MarketDataItem[]> = computed(() => {
     let filtered = marketData.value;
 
     filtered = filtered.filter(
@@ -53,7 +63,7 @@ export const useMarketStore = defineStore("market", () => {
     return sortMarketData(filtered);
   });
 
-  const marketTrend = computed(() => {
+  const marketTrend: ComputedRef<string> = computed(() => {
     if (marketData.value.length === 0) return "N/A";
 
     const upCount = marketData.value.filter(
@@ -67,7 +77,7 @@ export const useMarketStore = defineStore("market", () => {
     return "Mixed";
   });
 
-  const marketStats = computed(() => {
+  const marketStats: ComputedRef<MarketStats> = computed(() => {
     const data = filteredMarketData.value;
 
     if (data.length === 0) {
@@ -81,7 +91,7 @@ export const useMarketStore = defineStore("market", () => {
     }
 
     const totalVolume = data.reduce(
-      (sum, item) => sum + parseFloat(item.volume.secondary || 0),
+      (sum, item) => sum + parseFloat(item.volume.secondary || "0"),
       0
     );
 
@@ -112,7 +122,7 @@ export const useMarketStore = defineStore("market", () => {
     };
   });
 
-  const sortMarketData = (data) => {
+  const sortMarketData = (data: MarketDataItem[]): MarketDataItem[] => {
     return [...data].sort((a, b) => {
       let aValue, bValue;
 
@@ -156,22 +166,26 @@ export const useMarketStore = defineStore("market", () => {
 
       if (typeof aValue === "string") {
         return sortOrder.value === "asc"
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
+          ? aValue.localeCompare(String(bValue))
+          : String(bValue).localeCompare(aValue);
       } else {
-        return sortOrder.value === "asc" ? aValue - bValue : bValue - aValue;
+        return sortOrder.value === "asc"
+          ? Number(aValue) - Number(bValue)
+          : Number(bValue) - Number(aValue);
       }
     });
   };
 
-  const fetchMarketData = async (isPollingUpdate = false) => {
+  const fetchMarketData = async (
+    isPollingUpdate: boolean = false
+  ): Promise<boolean> => {
     try {
       if (!isPollingUpdate) {
         isLoading.value = true;
       }
       error.value = null;
 
-      const newData = await fetchData(API_ENDPOINTS.MARKET);
+      const newData = await fetchData<MarketDataItem[]>(API_ENDPOINTS.MARKET);
 
       if (newData) {
         const currentDataString = JSON.stringify(marketData.value);
@@ -205,7 +219,10 @@ export const useMarketStore = defineStore("market", () => {
     }
   };
 
-  const getCryptoData = (primary, secondary = null) => {
+  const getCryptoData = (
+    primary: string,
+    secondary?: string
+  ): Optional<MarketDataItem> => {
     const targetSecondary = secondary || currenciesStore.selectedCurrency;
     return marketData.value.find(
       (item) =>
@@ -214,15 +231,17 @@ export const useMarketStore = defineStore("market", () => {
     );
   };
 
-  const startRealTimePolling = (intervalMs = 10000) => {
-    startPolling(() => fetchMarketData(true), intervalMs);
+  const startRealTimePolling = (intervalMs: number = 10000): void => {
+    startPolling(async () => {
+      await fetchMarketData(true);
+    }, intervalMs);
   };
 
-  const stopRealTimePolling = () => {
+  const stopRealTimePolling = (): void => {
     stopPolling();
   };
 
-  const setSortBy = (field, order = null) => {
+  const setSortBy = (field: SortField, order?: SortOrder): void => {
     if (sortBy.value === field && !order) {
       sortOrder.value = sortOrder.value === "asc" ? "desc" : "asc";
     } else {
@@ -241,15 +260,15 @@ export const useMarketStore = defineStore("market", () => {
     }
   };
 
-  const clearSearch = () => {
+  const clearSearch = (): void => {
     searchQuery.value = "";
   };
 
-  const clearError = () => {
+  const clearError = (): void => {
     error.value = null;
   };
 
-  const reset = () => {
+  const reset = (): void => {
     marketData.value = [];
     isLoading.value = false;
     isInitialLoad.value = true;

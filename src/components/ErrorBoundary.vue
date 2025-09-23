@@ -33,39 +33,17 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useErrorHandler } from '../composables/useErrorHandler.js'
+import { useErrorHandler } from '@/composables/useErrorHandler'
 
-const props = defineProps({
-  boundaryId: {
-    type: String,
-    default: 'default'
-  },
-  
-  showDetails: {
-    type: Boolean,
-    default: false
-  },
-  
-
-  title: {
-    type: String,
-    default: 'Something went wrong'
-  },
-  
-
-  onRetry: {
-    type: Function,
-    default: null
-  },
-  
-
-  retryable: {
-    type: Boolean,
-    default: true
-  }
-})
+const props = defineProps<{
+  boundaryId?: string;
+  showDetails?: boolean;
+  title?: string;
+  onRetry?: (() => void) | null;
+  retryable?: boolean;
+}>()
 
 const emit = defineEmits(['error', 'retry', 'dismiss'])
 
@@ -77,22 +55,37 @@ const {
 } = useErrorHandler()
 
 const hasError = ref(false)
-const currentError = ref(null)
+const currentError = ref<Error | Record<string, unknown> | null>(null)
 const isRetrying = ref(false)
 
 const errorTitle = computed(() => {
-  if (currentError.value?.title) return currentError.value.title
+  if (currentError.value && typeof currentError.value === 'object' && 'title' in currentError.value) {
+    return (currentError.value as Record<string, unknown>).title as string
+  }
   return props.title
 })
 
 const errorMessage = computed(() => {
   if (!currentError.value) return ''
-  return formatErrorMessage(currentError.value)
+  const errorInfo = {
+    message: currentError.value instanceof Error ? currentError.value.message : String(currentError.value),
+    code: 'UNKNOWN_ERROR',
+    timestamp: new Date(),
+    retryable: false
+  }
+  return formatErrorMessage(errorInfo)
 })
 
 const errorDetails = computed(() => {
   if (!currentError.value) return ''
-  return currentError.value.stack || currentError.value.message || ''
+  if (currentError.value instanceof Error) {
+    return currentError.value.stack || currentError.value.message || ''
+  }
+  if (typeof currentError.value === 'object' && currentError.value !== null) {
+    const obj = currentError.value as Record<string, unknown>
+    return (obj.stack as string) || (obj.message as string) || ''
+  }
+  return String(currentError.value)
 })
 
 const canRetry = computed(() => {
@@ -101,7 +94,7 @@ const canRetry = computed(() => {
          (props.onRetry || isRetryableError(currentError.value))
 })
 
-const captureError = (error, info = {}) => {
+const captureError = (error: Error | Record<string, unknown>, info: Record<string, unknown> = {}): void => {
   currentError.value = {
     ...error,
     ...info,
@@ -119,14 +112,14 @@ const captureError = (error, info = {}) => {
   console.error(`Error caught by boundary "${props.boundaryId}":`, error)
 }
 
-const handleRetry = async () => {
+const handleRetry = async (): Promise<void> => {
   if (!canRetry.value || isRetrying.value) return
   
   isRetrying.value = true
   
   try {
     if (props.onRetry) {
-      await props.onRetry(currentError.value)
+      await props.onRetry()
     }
     
     handleDismiss()
@@ -137,16 +130,16 @@ const handleRetry = async () => {
     })
   } catch (retryError) {
     console.error('Retry failed:', retryError)
-    captureError(retryError, { isRetryError: true })
+    captureError(retryError as Error, { isRetryError: true })
   } finally {
     isRetrying.value = false
   }
 }
 
-const handleDismiss = () => {
+const handleDismiss = (): void => {
   hasError.value = false
   currentError.value = null
-  removeError(props.boundaryId)
+  removeError(props.boundaryId || 'default')
   
   emit('dismiss', {
     boundaryId: props.boundaryId
@@ -157,7 +150,7 @@ const reset = () => {
   handleDismiss()
 }
 
-const handleGlobalError = (event) => {
+const handleGlobalError = (event: ErrorEvent): void => {
   if (event.error) {
     captureError(event.error, {
       type: 'javascript',
@@ -168,7 +161,7 @@ const handleGlobalError = (event) => {
   }
 }
 
-const handleUnhandledRejection = (event) => {
+const handleUnhandledRejection = (event: PromiseRejectionEvent): void => {
   captureError(event.reason, {
     type: 'promise',
     promise: true
@@ -176,9 +169,9 @@ const handleUnhandledRejection = (event) => {
 }
 
 onMounted(() => {
-  const existingError = getError(props.boundaryId)
+  const existingError = getError(props.boundaryId || 'default')
   if (existingError) {
-    captureError(existingError)
+    captureError(existingError as unknown as Error)
   }
   
   window.addEventListener('error', handleGlobalError)

@@ -1,11 +1,11 @@
-import { ref, watch } from "vue";
+import { ref, watch, type Ref } from "vue";
 
-export function useLocalStorage(key, defaultValue) {
+export function useLocalStorage<T>(key: string, defaultValue: T) {
   if (typeof key !== "string" || key.length === 0) {
     throw new Error("Storage key must be a non-empty string");
   }
 
-  const readFromStorage = () => {
+  const readFromStorage = (): T => {
     try {
       const item = localStorage.getItem(key);
       if (item === null) return defaultValue;
@@ -18,7 +18,7 @@ export function useLocalStorage(key, defaultValue) {
             `localStorage key "${key}" contains non-JSON value, using as string:`,
             item
           );
-          return item;
+          return item as T;
         }
         throw parseError;
       }
@@ -28,7 +28,7 @@ export function useLocalStorage(key, defaultValue) {
     }
   };
 
-  const writeToStorage = (value) => {
+  const writeToStorage = (value: T): void => {
     try {
       localStorage.setItem(key, JSON.stringify(value));
     } catch (error) {
@@ -36,17 +36,17 @@ export function useLocalStorage(key, defaultValue) {
     }
   };
 
-  const storedValue = ref(readFromStorage());
+  const storedValue = ref(readFromStorage()) as Ref<T>;
 
   watch(
     storedValue,
-    (newValue) => {
+    (newValue: T) => {
       writeToStorage(newValue);
     },
     { deep: true }
   );
 
-  const removeFromStorage = () => {
+  const removeFromStorage = (): void => {
     try {
       localStorage.removeItem(key);
       storedValue.value = defaultValue;
@@ -55,7 +55,7 @@ export function useLocalStorage(key, defaultValue) {
     }
   };
 
-  const reset = () => {
+  const reset = (): void => {
     storedValue.value = defaultValue;
   };
 

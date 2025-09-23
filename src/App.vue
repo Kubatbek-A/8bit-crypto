@@ -4,7 +4,7 @@
       <div class="container">
         <div class="header-content">
           <router-link to="/" class="brand">
-            <img src="./assets/logo.svg" alt="Logo" class="logo" />
+            <img src="@/assets/logo.svg" alt="Logo" class="logo" />
           </router-link>
           
           <div class="header-actions">
@@ -40,12 +40,11 @@
   </div>
 </template>
 
-<script setup>
-import { onMounted } from 'vue'
+<script setup lang="ts">
 import { storeToRefs } from 'pinia'
-import { useMarketStore } from './stores/modules/market.js'
-import CurrencySwitcher from './components/CurrencySwitcher.vue'
-import ErrorBoundary from './components/ErrorBoundary.vue'
+import { useMarketStore } from '@/stores/modules/market'
+import CurrencySwitcher from '@/components/CurrencySwitcher.vue'
+import ErrorBoundary from '@/components/ErrorBoundary.vue'
 
 const marketStore = useMarketStore()
 const { searchQuery } = storeToRefs(marketStore)

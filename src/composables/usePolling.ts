@@ -1,15 +1,20 @@
-import { ref, onUnmounted } from "vue";
-import { POLLING_CONFIG } from "../constants/api.js";
+import { ref, onUnmounted, type Ref } from "vue";
+import { POLLING_CONFIG } from "@/constants/api";
+
+type PollingCallback = () => Promise<void> | void;
 
 export function usePolling() {
-  const isPolling = ref(false);
-  const nextUpdateTime = ref(null);
-  const pollingInterval = ref(POLLING_CONFIG.INTERVAL);
+  const isPolling: Ref<boolean> = ref(false);
+  const nextUpdateTime: Ref<Date | null> = ref(null);
+  const pollingInterval: Ref<number> = ref(POLLING_CONFIG.INTERVAL);
 
-  let refreshInterval = null;
-  let countdownInterval = null;
+  let refreshInterval: number | null = null;
+  let countdownInterval: number | null = null;
 
-  const startPolling = (callback, intervalMs = POLLING_CONFIG.INTERVAL) => {
+  const startPolling = (
+    callback: PollingCallback,
+    intervalMs: number = POLLING_CONFIG.INTERVAL
+  ): void => {
     if (typeof callback !== "function") {
       throw new Error("Callback must be a function");
     }
@@ -32,7 +37,7 @@ export function usePolling() {
     countdownInterval = setInterval(() => {
       if (nextUpdateTime.value) {
         const now = new Date();
-        const timeLeft = nextUpdateTime.value - now;
+        const timeLeft = nextUpdateTime.value.getTime() - now.getTime();
         if (timeLeft <= 0) {
           nextUpdateTime.value = new Date(Date.now() + intervalMs);
         }
@@ -40,7 +45,7 @@ export function usePolling() {
     }, POLLING_CONFIG.COUNTDOWN_INTERVAL);
   };
 
-  const stopPolling = () => {
+  const stopPolling = (): void => {
     if (refreshInterval) {
       clearInterval(refreshInterval);
       refreshInterval = null;
@@ -53,17 +58,20 @@ export function usePolling() {
     nextUpdateTime.value = null;
   };
 
-  const getTimeRemaining = () => {
+  const getTimeRemaining = (): number => {
     if (!nextUpdateTime.value) return 0;
     const now = new Date();
     const timeLeft = Math.max(
       0,
-      Math.floor((nextUpdateTime.value - now) / 1000)
+      Math.floor((nextUpdateTime.value.getTime() - now.getTime()) / 1000)
     );
     return timeLeft;
   };
 
-  const updateInterval = (intervalMs, callback) => {
+  const updateInterval = (
+    intervalMs: number,
+    callback: PollingCallback
+  ): void => {
     if (isPolling.value) {
       startPolling(callback, intervalMs);
     } else {

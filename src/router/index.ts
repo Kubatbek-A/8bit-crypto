@@ -1,8 +1,12 @@
-import { createRouter, createWebHistory } from "vue-router";
-import MarketOverview from "../views/MarketOverview.vue";
-import CryptoDetail from "../views/CryptoDetail.vue";
+import {
+  createRouter,
+  createWebHistory,
+  type RouteRecordRaw,
+} from "vue-router";
+import MarketOverview from "@/views/MarketOverview.vue";
+import CryptoDetail from "@/views/CryptoDetail.vue";
 
-const routes = [
+const routes: RouteRecordRaw[] = [
   {
     path: "/",
     name: "MarketOverview",

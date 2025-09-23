@@ -100,41 +100,39 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useCryptoStore } from '../stores/crypto'
-import { CURRENCIES_DATA } from '../constants/currencies'
-import PriceChart from '../components/PriceChart.vue'
-import DetailSkeleton from '../components/DetailSkeleton.vue'
+import { useCryptoStore } from '@/stores/crypto'
+import { CURRENCIES_DATA } from '@/constants/currencies'
+import PriceChart from '@/components/PriceChart.vue'
+import DetailSkeleton from '@/components/DetailSkeleton.vue'
+import type { CurrencyInfo, MarketDataItem, Optional, Maybe } from '@/types'
 
-const props = defineProps({
-  primary: {
-    type: String,
-    required: true
-  }
-})
+const props = defineProps<{
+  primary: string
+}>()
 
 const cryptoStore = useCryptoStore()
 const { marketData, selectedCurrency, isInitialLoad } = storeToRefs(cryptoStore)
 
-const cryptoData = computed(() => {
+const cryptoData = computed((): Optional<MarketDataItem> => {
   return cryptoStore.getCryptoData(props.primary, selectedCurrency.value)
 })
 
-const primaryCurrency = computed(() => 
+const primaryCurrency = computed((): Optional<CurrencyInfo> => 
   cryptoStore.getCurrencyInfo(props.primary)
 )
 
-const selectedCurrencyInfo = computed(() => 
+const selectedCurrencyInfo = computed((): Optional<CurrencyInfo> => 
   CURRENCIES_DATA.find(currency => currency.code === selectedCurrency.value)
 )
 
 const availableCurrenciesForCrypto = computed(() => {
   const availableCodes = new Set(
     marketData.value
-      .filter(item => item.pair.primary === props.primary)
-      .map(item => item.pair.secondary)
+      .filter((item: MarketDataItem) => item.pair.primary === props.primary)
+      .map((item: MarketDataItem) => item.pair.secondary)
   )
   
   return CURRENCIES_DATA.filter(currency => 
@@ -145,8 +143,8 @@ const availableCurrenciesForCrypto = computed(() => {
 const chartData = computed(() => {
   if (!cryptoData.value?.priceHistory) return { labels: [], datasets: [] }
   
-  const prices = cryptoData.value.priceHistory.map(p => parseFloat(p))
-  const labels = prices.map((_, index) => `${index + 1}`)
+  const prices = cryptoData.value.priceHistory.map((p: number) => parseFloat(p.toString()))
+  const labels = prices.map((_: number, index: number) => `${index + 1}`)
   
   return {
     labels,
@@ -176,9 +174,11 @@ const chartOptions = computed(() => ({
   }
 }))
 
-const formatPrice = (price, decimals) => cryptoStore.formatPrice(price, decimals)
-const formatVolume = (volume) => cryptoStore.formatVolume(volume)
-const changeCurrency = (currencyCode) => cryptoStore.changeCurrency(currencyCode)
+const formatPrice = (price: Maybe<string | number>, decimals: number = 2): string => cryptoStore.formatPrice(price, decimals)
+const formatVolume = (volume: Maybe<string | number>): string => cryptoStore.formatVolume(volume)
+const changeCurrency = (currencyCode: string): void => {
+  cryptoStore.changeCurrency(currencyCode);
+}
 
 onMounted(async () => {
   await Promise.all([
@@ -671,7 +671,7 @@ watch(() => selectedCurrency.value, () => {
     min-width: auto;
     gap: 12px;
     position: relative;
-    padding-right: 120px; /* Make room for price */
+    padding-right: 120px;
   }
   
   .crypto-icon {

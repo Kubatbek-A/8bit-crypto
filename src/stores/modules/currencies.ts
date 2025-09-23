@@ -1,28 +1,35 @@
-import { ref, computed } from "vue";
+import { ref, computed, type Ref, type ComputedRef } from "vue";
 import { defineStore } from "pinia";
-import { CURRENCIES_DATA } from "../../constants/currencies.js";
-import { API_ENDPOINTS } from "../../constants/api.js";
-import { useApi } from "../../composables/useApi.js";
-import { useLocalStorage } from "../../composables/useLocalStorage.js";
+import { CURRENCIES_DATA } from "@/constants/currencies";
+import { API_ENDPOINTS } from "@/constants/api";
+import { useApi } from "@/composables/useApi";
+import { useLocalStorage } from "@/composables/useLocalStorage";
+import type {
+  CurrencyInfo,
+  ApiError,
+  MarketDataItem,
+  Optional,
+  Nullable,
+} from "@/types";
 
 export const useCurrenciesStore = defineStore("currencies", () => {
   const { fetchData } = useApi();
-  const { value: selectedCurrency } = useLocalStorage(
+  const { value: selectedCurrency } = useLocalStorage<string>(
     "selectedCurrency",
     "Aud"
   );
 
-  const currencies = ref(CURRENCIES_DATA);
-  const isLoading = ref(false);
-  const error = ref(null);
-  const lastUpdate = ref(null);
+  const currencies: Ref<CurrencyInfo[]> = ref(CURRENCIES_DATA);
+  const isLoading: Ref<boolean> = ref(false);
+  const error: Ref<Nullable<ApiError>> = ref(null);
+  const lastUpdate: Ref<Nullable<Date>> = ref(null);
 
-  const primaryCurrencies = computed(() =>
+  const primaryCurrencies: ComputedRef<CurrencyInfo[]> = computed(() =>
     currencies.value.filter((currency) => currency.type === "Primary")
   );
 
-  const secondaryCurrencies = computed(() => {
-    const seen = new Set();
+  const secondaryCurrencies: ComputedRef<CurrencyInfo[]> = computed(() => {
+    const seen = new Set<string>();
     return currencies.value
       .filter((currency) => {
         if (currency.type === "Secondary" && !seen.has(currency.code)) {
@@ -34,18 +41,21 @@ export const useCurrenciesStore = defineStore("currencies", () => {
       .sort((a, b) => a.sort_order - b.sort_order);
   });
 
-  const selectedCurrencyInfo = computed(() =>
-    currencies.value.find(
-      (currency) => currency.code === selectedCurrency.value
-    )
+  const selectedCurrencyInfo: ComputedRef<Optional<CurrencyInfo>> = computed(
+    () =>
+      currencies.value.find(
+        (currency) => currency.code === selectedCurrency.value
+      )
   );
 
-  const fetchCurrencies = async () => {
+  const fetchCurrencies = async (): Promise<boolean> => {
     try {
       isLoading.value = true;
       error.value = null;
 
-      const apiCurrencies = await fetchData(API_ENDPOINTS.CURRENCY);
+      const apiCurrencies = await fetchData<CurrencyInfo[]>(
+        API_ENDPOINTS.CURRENCY
+      );
 
       if (apiCurrencies) {
         const apiCurrencyCodes = new Set(
@@ -90,13 +100,13 @@ export const useCurrenciesStore = defineStore("currencies", () => {
     }
   };
 
-  const getCurrencyInfo = (code) => {
+  const getCurrencyInfo = (code: string): Optional<CurrencyInfo> => {
     return currencies.value.find(
       (currency) => currency.code.toLowerCase() === code.toLowerCase()
     );
   };
 
-  const changeCurrency = (currencyCode) => {
+  const changeCurrency = (currencyCode: string): boolean => {
     const currency = getCurrencyInfo(currencyCode);
     if (!currency || currency.type !== "Secondary") {
       console.warn(`Invalid secondary currency code: ${currencyCode}`);
@@ -108,7 +118,9 @@ export const useCurrenciesStore = defineStore("currencies", () => {
     return true;
   };
 
-  const getAvailableSecondaryCurrencies = (marketData = []) => {
+  const getAvailableSecondaryCurrencies = (
+    marketData: MarketDataItem[] = []
+  ): CurrencyInfo[] => {
     const currenciesWithPairs = new Set(
       marketData.map((item) => item.pair.secondary)
     );
@@ -117,7 +129,10 @@ export const useCurrenciesStore = defineStore("currencies", () => {
     );
   };
 
-  const getAvailableCurrenciesForCrypto = (primaryCode, marketData = []) => {
+  const getAvailableCurrenciesForCrypto = (
+    primaryCode: string,
+    marketData: MarketDataItem[] = []
+  ): CurrencyInfo[] => {
     const availableCodes = new Set(
       marketData
         .filter(
@@ -132,11 +147,11 @@ export const useCurrenciesStore = defineStore("currencies", () => {
     );
   };
 
-  const clearError = () => {
+  const clearError = (): void => {
     error.value = null;
   };
 
-  const reset = () => {
+  const reset = (): void => {
     currencies.value = CURRENCIES_DATA;
     isLoading.value = false;
     error.value = null;

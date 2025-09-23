@@ -1,4 +1,6 @@
-export const CURRENCIES_DATA = [
+import type { CurrencyInfo } from "@/types";
+
+export const CURRENCIES_DATA: CurrencyInfo[] = [
   {
     code: "Aud",
     sort_order: 50,

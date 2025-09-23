@@ -12,20 +12,16 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { useChart } from '../composables/useChart.js'
+import { useChart } from '@/composables/useChart'
+import type { ChartDataConfig, ChartWithResizeObserver, Optional } from '@/types'
+import type { ISeriesApi, MouseEventParams, Time, AreaData } from 'lightweight-charts'
 
-const props = defineProps({
-  data: {
-    type: Object,
-    required: true
-  },
-  options: {
-    type: Object,
-    default: () => ({})
-  }
-})
+const props = defineProps<{
+  data: ChartDataConfig;
+  options?: Record<string, unknown>;
+}>()
 
 const {
   showTooltip,
@@ -40,12 +36,12 @@ const {
   initializeChart,
 } = useChart()
 
-const chartContainer = ref(null)
-const chartElement = ref(null)
-let chart = null
-let areaSeries = null
+const chartContainer = ref<HTMLElement | null>(null)
+const chartElement = ref<HTMLElement | null>(null)
+let chart: ChartWithResizeObserver | null = null
+let areaSeries: ISeriesApi<"Area"> | null = null
 
-const initChart = () => {
+const initChart = (): void => {
   if (!chartElement.value || !props.data) return
   
   if (chart) {
@@ -64,14 +60,14 @@ const initChart = () => {
     
     const crosshairHandler = createCrosshairMoveHandler(
       chart, 
-      areaSeries, 
-      chartContainer.value, 
+      areaSeries!, 
+      chartContainer.value!, 
       chartElement.value
     )
-    chart.subscribeCrosshairMove(crosshairHandler)
+    chart!.subscribeCrosshairMove(crosshairHandler as (param: MouseEventParams<Time>) => void)
     
     const resizeObserver = createResizeObserver(chart, chartElement.value)
-    chart._resizeObserver = resizeObserver
+    chart!._resizeObserver = resizeObserver
     
   } catch (error) {
     console.error('Error initializing chart:', error)
@@ -95,7 +91,7 @@ onUnmounted(() => {
   }
 })
 
-watch(() => props.data, (newData, oldData) => {
+watch(() => props.data, (newData: ChartDataConfig, oldData: Optional<ChartDataConfig>) => {
   if (areaSeries && newData) {
     const { priceData } = convertDataToLightweightFormat(newData)
     if (priceData.length > 0) {
@@ -103,10 +99,14 @@ watch(() => props.data, (newData, oldData) => {
       
       if (oldLightweightData.priceData.length > 0 && priceData.length === oldLightweightData.priceData.length) {
         const lastPricePoint = priceData[priceData.length - 1]
-        areaSeries.update(lastPricePoint)
+        if (lastPricePoint) {
+          areaSeries.update(lastPricePoint as AreaData<Time>)
+        }
       } else {
-        areaSeries.setData(priceData)
-        chart.timeScale().fitContent()
+        areaSeries.setData(priceData as AreaData<Time>[])
+        if (chart) {
+          chart.timeScale().fitContent()
+        }
       }
       
       areaSeries.applyOptions(getAreaSeriesOptions())
@@ -116,7 +116,7 @@ watch(() => props.data, (newData, oldData) => {
   }
 }, { deep: true })
 
-watch(() => props.options, () => {
+watch(() => props.options, (): void => {
   if (chart) {
     chart.applyOptions(getChartOptions(props.options))
   }
