@@ -1,7 +1,7 @@
 import { ref, computed, type Ref, type ComputedRef } from "vue";
 import type { ApiError, Optional } from "@/types";
 
-interface ErrorInfo {
+export interface ErrorInfo {
   message: string;
   code: string;
   timestamp: Date;

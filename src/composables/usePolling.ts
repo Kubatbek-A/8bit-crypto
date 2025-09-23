@@ -1,15 +1,15 @@
 import { ref, onUnmounted, type Ref } from "vue";
 import { POLLING_CONFIG } from "@/constants/api";
 
-type PollingCallback = () => Promise<void> | void;
+export type PollingCallback = () => Promise<void> | void;
 
 export function usePolling() {
   const isPolling: Ref<boolean> = ref(false);
   const nextUpdateTime: Ref<Date | null> = ref(null);
   const pollingInterval: Ref<number> = ref(POLLING_CONFIG.INTERVAL);
 
-  let refreshInterval: number | null = null;
-  let countdownInterval: number | null = null;
+  let refreshInterval: ReturnType<typeof setInterval> | null = null;
+  let countdownInterval: ReturnType<typeof setInterval> | null = null;
 
   const startPolling = (
     callback: PollingCallback,

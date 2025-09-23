@@ -6,7 +6,8 @@
     "src/**/*.vue"
   ],
   "exclude": [
-    "src/**/__tests__/*"
+    "node_modules",
+    "dist"
   ],
   "compilerOptions": {
     "composite": true,
@@ -25,7 +26,7 @@
     "allowUnusedLabels": false,
     "allowUnreachableCode": false,
     "skipLibCheck": true,
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
